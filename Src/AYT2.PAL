@@ -1,0 +1,631 @@
+/ THIS FILE CONTAINS THE HIGHER LEVEL WORD DEFINITIONS
+/ AND USER VARS.
+/ CORE VARS:
+/ [W], [RP], [SP], [IX], [ILIM], [T0].. [T3], [C63], [QTF]
+/ HEADERLESS DEFS:
+/ OPDOES, ENTER, NEXT, EXIT, SEMIS, RESET, TTINIV,
+/ CONSTD, VARD, HDIV, SADDR, 
+/ CORE DEFS:
+/ LIT, EXEC, BRA, QBRA, LOOP, PLOOP, DO, UMUL, UDIV,
+/ BITAND, BITOR, BITXOR, LEAVE, RFROM, TOR, OPR, PLUS
+/ DPLUS, MINUS, DMINUS, SWAP, EQ0, LT0, OVER, DUPE,
+/ FETCH, DROP, SFETCH, PLING, DIV2, SPLING, QTERM,
+/ EMIT, KEY
+/ MID DEFS:
+/ MUL2, ONEPLS, QDUP, COUNT, LEN0, SLEN, TYP, SPACE,
+/ TDUP, SUB, LT, MAX, SPACES, CR, DOTQX
+/ ZERO, ONE, TWO, THREE, BLANK, PLUSPL, TOGLE,
+/ ONEPLS, TWOPLS, HERE, ALLOT, COMMA, *BUILDS*, CONST,
+/ *USERDP*,
+/
+/ IN THIS CODE, LENGTH IS:
+/ 19+15+7+61+7+7+6+5+5+8+9 = 149 ( LATEST)
+/ 8+6+11+7+11+18+11+11+10 =   93 ( ?COMP)
+/ 10+10+7+13+6+7+11+18+6+8 =  96 ( HEX)
+/ 7+26+40+42+14+42+21+44  =  236 ( NAMECP)
+/ 33+28+14+13+14+48+5+36  =  191 ( INTERPRET)
+/ 10+18+11+12+7+8+8+6+6+7 =   93 ( DABS)
+/ 11+8+14+5+9+7+19+9+6+6  =   94 ( MOD)
+/ 14
+/ 8+11+8+10+10+10+10+14+10=   91 ( IF)
+/ 16+7					  =   23 ( WHILE)
+/ 11+8+12+12+20+11+20+7+8 =  109 ( .R)
+/ 5+5					  = 1189 WORDS.
+/ FINAL TOTALS: 1942 WORDS.
+/ NEGLECTED ENTERS: 77+11+31 = 2061.
+/ THIS MEANS THAT FORTH SYSTEM RUNS FROM:
+/ OCT 0200 TO 4215 AND STACKS FROM 7400.
+/ LEAVING 3163 OR 1651 WORDS FREE (APPROX 3K).
+
+H_SMUG=40
+H_IMM=20
+H_LEN=77-H_SMUG-H_IMM
+H_MAXL=17
+FLGST8=FLGIMM
+FNDMSK=FLGSMG-1
+BLNK=0
+EOLN=74
+
+KEYBS=11
+KEYCR=15
+
+THERE,
+		ENTER
+		HERE; ONEPLS; EXIT
+
+__Immed DOTQUO ."
+                LIT; ""-40; WERD; THERE; COUNT; 
+                US_ST; FETCH; QBRA; DQ1;
+                	COMPIL; DOTQX	/ COMPILE THE COMMAND
+                	LEN2W; ALLOT;	/ SKIP OVER THE TEXT.
+                EXIT
+DQ1,
+           			TYP
+           		EXIT
+
+/ FILL ( SRC LEN VAL --)
+__Colon FILL FILL
+                SWAP; TOR; OVER; PLING; DUPE; ONEPLS;
+                RFROM; ONE; SUB; CMOVE; EXIT
+
+USER0,
+         		TIB0                  / TIB
+                17               	 / WIDTH
+                1                    / WARNING
+                DICT              / DP
+                LASTLINK    		/ CONTEXT
+                LASTLINK    / CURRENT
+
+INIT_SIZE       EQU $-USER0
+
+__Const US_TIB TIB
+	UP
+	
+__Const US_WID WIDTH	
+	UP+1
+	
+__Const US_WRN WARNING	/ 04H
+	UP+2
+	
+__Const US_DP DP	/ 06H
+	UP+3
+	
+__Const US_CON CONTEXT	/ 08H
+	UP+4
+	
+__Const US_CUR CURRENT	/ 0AH
+	UP+5
+
+__Const US_IN IN	/ 12H
+	UP+6
+	
+__Const US_OUT OUT	/ 14H
+	UP+7
+	
+__Const US_ST STATE	/ 16H
+	UP+10
+	
+__Const US_BAS BASE	/ 18H
+	UP+11
+	
+__Const US_DPL DPL	/ 1AH
+	UP12
+	
+__Const US_FLD FLD	/ 1CH
+	UP+13
+	
+__Const US_HLD HLD	/ 1EH
+	UP+14
+
+                / =====================================
+
+__Colon HERE HERE
+                US_DP; FETCH; EXIT
+
+__Colon ALLOT ALLOT
+                US_DP; PLUSPL; EXIT
+
+__Colon COMMA ,
+                HERE; PLING; ONE; ALLOT; EXIT
+
+__Colon EQUALS =
+                SUB; EQ0; EXIT
+
+
+__Colon OP_GT >
+                SWAP; OPLT; EXIT
+
+__Colon ROT ROT
+                TOR; SWAP; RFROM; SWAP; EXIT
+
+
+                / =====================================
+
+__Colon LATEST LATEST
+                US_CUR; FETCH; EXIT
+
+NFALEN,
+				ENTER; COUNT; LIT; H_LEN; BITAND; EXIT
+
+__Colon L2NFA LFA>NFA
+				ONEPLS; EXIT
+
+__Colon L2CFA LFA>CFA
+                ONEPLS; NFALEN; LEN2W; PLUS; ONEPLS; EXIT
+
+__Colon IDDOT ID.
+                NFALEN; TYP; SPACE; EXIT
+
+                / =====================================
+
+__Colon MESSG MESSAGE
+                DOTQX
+                TEXT /%MSG #/
+                DOT; EXIT
+
+__Colon ERROR ERROR
+                US_WRN; FETCH; LT0; QBRA; ERROR1; ABORT
+ERROR1,
+        		LATEST; LF2NFA; COUNT; TYP; DOTQX
+        		TEXT /2? /
+                MESSG; QUIT
+
+__Colon QERR ?ERROR
+                SWAP; QBRA; QERR1; ERROR
+QERR1,
+     			DROP; EXIT
+
+__Colon QCOMP ?COMP
+                US_ST; FETCH; EQ0; LIT; 21; QERR; EXIT
+
+__Colon QEXEC ?EXEC
+                US_ST; FETCH; LIT; 22; QERR; EXIT
+
+__Colon QPAIRS ?PAIRS
+                SUB; LIT; 23; QERR; EXIT
+
+                / =====================================
+
+                
+__Immed SEMI ;
+                COMPIL; EXIT; SMUDGE; SQ_OP; EXIT
+
+__Colon IMMED IMMEDIATE
+                LATEST; ONEPLS; LIT; H_IMM; TOGL; EXIT
+
+__Colon COMPIL COMPILE
+                QCOMP; RFROM; ONEPLS; DUPE; TOR; FETCH; COMMA; EXIT
+
+__Immed SQ_OP [
+                ZERO; US_ST; PLING; EXIT
+
+__Colon SQ_CL ]
+                LIT; FLAG_STATE; US_ST; PLING; EXIT
+
+__Colon SMUDGE SMUDGE
+                LATEST; ONEPLS; LIT; FLAG_SMUDGE; TOGL; EXIT
+
+__Immed DOES DOES>
+				QCOMP							/ RUNS IN COMPILE MODE ONLY.
+				LIT; DOESRT; COMMA				/ COMPILE IN THE DOES RUNTIME
+				LIT
+				JMS OPDOES
+				COMMA							/ COMPILE IN THE DEFINERS DOES OP.
+				EXIT
+DOESRT,			/ COMPILE IN POINTER TO JMS OPDOES.
+                RFROM; ONEPLS; LATEST; LFA2PFA; PLING; EXIT
+
+__Immed ROUNDOPEN (
+                LIT; "); WERD; EXIT
+
+__Colon HEX HEX
+                LIT; 20;
+BASPL,
+                US_BAS; PLING; EXIT
+
+__Colon DEC DEC
+                LIT; 12; BRA; BASPL
+
+                / =====================================
+
+__Colon DIGIT DIGIT / ( C BASE -- U F )
+                TOR,LIT,"0,SUB
+                LIT,9,OVER,OPLT
+                QBRA,DGTQ1
+                LIT,-7,PLUS
+                DUPE,LIT,10,OPLT,BITOR
+DGTQ1,
+         		DUPE,RFROM,ULESS,EXIT
+
+				/ ******* A BIT UNSURE OF NUMBER CONVERSION.
+
+__Colon _NUM (NUMBR)
+_NUM0,
+      			DUPE; TOR; SFETCH                       / L H C : S
+                DUPE; US_BAS; FETCH; DIGIT           	/ L H C /C BASE/ D F : S
+                QBRA; _NUM2                        		/ L H C D : S
+				SWAP; DROP
+                SWAP; US_BAS; FETCH; UMUL; DROP        / L D H*BASE : S
+                ROT; US_BAS; FETCH; UMUL               / WORD:D WORD:H*BASE DWORD:L*BASE : S
+                DPLUS                                    / L H : S
+                US_DPL; FETCH; DUPE; LT0                  / L H DPL++ : S
+                ONEPLS; US_DPL; PLING
+_NUM1,
+      			RFROM; BRA; _NUM0                  / L H S
+_NUM2,
+      			DROP; RFROM; SWAP; EXIT                        / L H S C :
+
+__Colon NUMBR NUMBER / ( TEXT^ -- L H )
+                ZERO; ZERO; ROT; DUPE; LEN0           / 0 0 S /S/
+                DUPE; SFETCH; LIT; "-; EQUALS         / 0 0 S NEG?
+                DUPE; TOR; OVER; PLUSPL               / 0 0 S /NEG? S/ : NEG?
+                LIT; -1								/ 0 0 S -1 : NEG?
+NUMBR0,
+       			US_DPL; PLING; _NUM                  / L H S /DPS DPL/ C : NEG?
+                DUPE                                 / L H S BL? BL? : NEG?
+                QBRA; NUMBR1                         / L H A BL? : NEG?
+                LIT; ":+ ; SUB         / L H A COLON? : NEG?
+                ZERO; QERR; ZERO; BRA; NUMBR0    / L H A 0 : NEG?
+NUMBR1,
+       			DROP; DROP; RFROM; QBRA; NUMBR2; DMINUS    / L H : NEG?
+NUMBR2,
+       			EXIT
+
+__Colon WERD WORD / ( DELIM -- )
+WERD,			ENTER
+				US_TIB; FETCH; COUNT; DO	/ GETI=LEN, ILIM=TIB
+				US_IN; FETCH;	/ D IN
+				ONE; SUB
+WERD1,
+				ONEPLS; DUPE; GETI
+				OPLT; EQ0; QBRA; WERD2	/ END OF STRING? D IN
+				DUPE; ILIM; SFETCH
+				QBRA; WERD1				/ STILL SPACE, GO BACK.
+WERD2,
+				ONE; SUB				/ D IN-1
+				THERE; LEN0				/ CLEAR DEST STRING.
+WERD3,
+				ONEPLS; ONE; THERE; PLUSPL		/ INC IN, INC DST LEN
+				DUPE; OPLT; EQ0; QBRA; WERD5 	/ END OF STRING - QUIT.
+				TDUP; ILIM; SFETCH				/ D IN+1 D CH
+				SWAP; OVER;						/ D IN+1 CH D CH
+				SUB; QBRA; WERD4				/ MATCH, QUIT.
+				THERE; SPLING
+WERD4,			/ BLANKS TO END.
+				DROP
+WERD5,			/ END OF STRING
+				DROP; DROP; THERE; STERM
+				LEAVE; LOOP
+				EXIT			;52W.
+
+NAMCP,			/ S NFA -- F
+				ENTER
+				OVER; FETCH;	/ S NFA CH0:LENS
+				OVER; FETCH; LIT; 7717; BITAND	/ S NFA CH0:LENS CH0:LEND
+				EQUALS; QBRA; NAMCP5		/ IF LENGTHS DIFF THEN MISMATCH
+				OVER; SLEN; LEN2W;	/	S NFA LENW
+NAMCP0,
+				QDUP; EQ0; QBRA; NAMCP6	/ NOTHING MORE TO CHECK, MATCH!
+				LIT; -1; PLUS;			/ DEC LEN.
+NAMCP1,
+				TOR;			/ S NFA : LIM
+				SWAP; ONEPLS; SWAP; ONEPLS;
+				OVER; FETCH; OVER; FETCH;
+				EQUALS
+				RFROM; SWAP; QBRA; NAMCP0	/ STILL GOING
+NAMCP3,
+				DROP	/ DROP LEN.
+NAMCP5,
+				DUPE;	/ FAKE LEN OF NOT 0.
+NAMCP6,
+				TOR; DROP; DROP; RFROM; EQ0; EXIT	/ 42W
+				/ COMMON TIMINGS:
+				/ CH0:LEN MISMATCH = 18 INS. MATCH = +6 INS.
+				/ CH2:CH1 MISMATCH = +24 INS
+				/ SO 90% IS 18 INS, 9% IS 42 INS, 1% IS 66 INS.
+				/ SO 20.64 PER CHECK. PRETTY SLOW REALLY.
+				
+				/ FIND ( ; STR -- LFA OR 0 )
+__Colon FIND FIND
+
+				LATEST; ZERO; WERD
+FIND1,
+				SWAP; OVER; L2NFA
+				DUPE; FETCH					/ L S N [N]
+				LIT; H_SMUG; BITAND			/ L S N [N]&SMUDGE
+				EQ0; QBRA; FIND2				/ L S N
+				OVER; NAMCP; EQ0				/ L S /N S/ F=0
+				QBRA; FIND3
+				/ NAME MATCHES SO RETURN L
+				DROP; EXIT
+FIND2,
+				DROP
+FIND3,
+				SWAP; FETCH; DUPE		/ S [L] [L]
+				EQ0; QBRA; FIND1
+				/ END OF DICTIONARY
+				SWAP; DROP
+				EXIT				
+
+__Colon CREATE CREATE
+				LATEST; COMMA					/ LINK BACK
+				HERE; US_CUR; PLING		/ UPDATE LATEST.
+				LIT; BLANK; WERD; 
+				THERE; COUNT; TDUP; SWAP; LEN0	/ RESET LEN FOR NOW
+				LIT; H_MAXL; MIN				/ LIMIT LEN TO H_MAXL
+				TDUP; SWAP; PLUSPL				/STORE NEW LEN.
+				LEN2W; ALLOT					/ MOVE THERE PAST LEN.
+				LIT; VARD; COMMA				/ DEFAULT VARD
+                EXIT
+
+__Immed SQUARECOMPIL [COMPIL]
+                FIND; QDUP; EQ0; ZERO; QERR; L2CFA; COMMA
+                EXIT
+
+__Immed LITERAL LITERAL
+                US_ST; FETCH; QBRA; LITERAL1; COMPIL; LIT; COMMA
+LITERAL1,
+      			EXIT
+
+__Immed DLITERAL DLITERAL
+                US_ST; FETCH; QBRA; DLITERAL1; SWAP; LITERAL; LITERAL
+DLITERAL1,
+     			EXIT
+
+				/ RULES FOR EXPECT:
+				/ IF KEY=CR THEN QUIT
+				/ ELSE IF KEY=BS AND LEN>0 THEN DEC TIB LEN.
+				/ ELSE IF LEN<MAX THEN INC TIB AND SPLING.
+__Colon EXPECT EXPECT / ( TIB MAX -- )
+				TOR; LEN0						/ TIB : MAX
+EXPCT1,
+				KEY; DUPE; EMIT
+				DUPE; LIT; KEYCR; EQUALS
+				QBRA; EXPCT5
+				DUPE; LIT; KEYBS	/ TIB K TIB.LEN K KEYBS
+				SUB; QBRA EXPCT2	/ NOT KEYBS
+				DROP; DUPE; SLEN
+				QBRA; EXPCT1		/ LEN=0 GO BACK.
+				LIT; -1; OVER; PLUSPL	/ DEC LEN
+				BRA; EXPCT1
+EXPCT2,			/ ELSE INSERT
+				OVER; SLEN; OPR; OPLT	/ TIB K TIB.LEN<MAX
+				EQ0; QBRA; EXPCT1		/ IGNORE IF TOO LONG
+				OVER; ONE; SWAP; PLUSPL	/ TIB K /ONE TIB/
+				OVER; SPLING
+				BRA; EXPCT1
+
+__Immed ENDOFTEXT                                ; ZERO LENGTH NAME
+EXPCT5,
+                RFROM; DROP; EXIT
+
+__Colon INTRP INTERPRET
+INTRP0,
+    			FIND; QDUP; QBRA; INTRP3
+                US_ST; FETCH; OPLT; QBRA; INTRP1
+                L2CFA; COMMA
+                BRA; INTRP0
+INTRP1,
+    			L2CFA; EXEC
+    			BRA; INTRP0
+INTRP3,
+    			NUMBR
+                US_DPL; FETCH; ONEPLS; QBRA; INTRP4
+                DLITERAL; BRA; INTRP0
+INTRP4,
+    			DROP; LITERAL; BRA; INTRP0
+
+__Colon QUERY QUERY
+                US_TIB; FETCH; LIT; 77; EXPECT; EXIT
+
+__Colon QUIT QUIT
+                SQ_OP
+QUIT0,
+         		CR; QUERY; INTRP
+                US_ST; FETCH; EQ0; QBRA; QUIT1; DOTQX
+                TEXT /# OK/
+QUIT1,
+         		BRA; QUIT0
+
+__Colon ABORT ABORT
+                WARMV; DEC
+                CR; DOTQX
+                TEXT /%FORTH/
+                QUIT
+
+__Colon COLD COLD
+                LIT; USER0; LIT; UP; LIT; INIT_SIZE; CMOVE
+                ABORT
+
+                / =====================================
+
+__Colon S2D S->D
+                DUPE; LT0; EXIT
+
+__Colon PL_MI +-
+                LT0; QBRA; PL_MI1; MINUS
+PL_MI1,
+    			EXIT
+
+__Colon DPL_MI D+-
+                LT0; QBRA; DPL_MI1; DMINUS
+DPL_MI1,
+   				EXIT
+
+__Colon ABS ABS
+                DUPE; PL_MI; EXIT
+
+__Colon DABS DABS
+                DUPE; DPL_MI; EXIT
+
+__Colon MIN MIN
+                TDUP; OP_GT; QBRA; MIN1; SWAP
+MIN1,
+          		DROP; EXIT
+
+__Colon MAX MAX
+                TDUP; OPLT; QBRA; MAX1; SWAP
+MAX1,
+          		DROP; EXIT
+
+__Colon MMUL M*
+                / SIGNED 16*16 -> 32
+                TDUP; BITXOR; TOR; ABS; SWAP; ABS; UMUL; RFROM; DPL_MI; EXIT
+
+__Colon DO_MUL *
+                / UNSIGNED 16*16 -> 16
+                UMUL; DROP; EXIT
+
+__Colon MD_MOD */MOD
+                / SIGNED 16*16/16 -> 16R 16Q (VIA 32 INTERMEDIATE)
+                TOR; MMUL; RFROM; MDIV; EXIT
+
+__Colon MULDIV */
+                MD_MOD; SWAP; DROP; EXIT
+
+__Colon MDIV M/
+                / SIGNED 24/12 -> 16R 16Q
+                OVER                 / SL SH SD SH
+                TOR; TOR             / SL SH             SH SD
+                DABS                 / UL UH             SH SD
+                OPR                  / UL UH SD          SH SD
+                ABS                  / UL UH UD          SH SD
+                UDIV                 / UR UQ             SH SD
+                RFROM                / UR UQ SD          SH
+                OPR                  / UR UQ SD SH       SH
+                BITXOR               / UR UQ SIGN        SH
+                PL_MI            / UR SQ             SH
+                SWAP                 / SQ UR             SH
+                RFROM                / SQ UR SH
+                PL_MI            / SQ ?R
+                SWAP; EXIT           / ?R SQ
+
+__Colon DIVMOD /MOD
+                / SIGNED 16/16 -> 16R 16Q
+                TOR; S2D; RFROM; MDIV; EXIT
+
+__Colon DIVIDE /
+                DIVMOD; SWAP; DROP; EXIT
+
+__Colon MODULO MOD
+                DIVMOD; DROP; EXIT
+
+__Colon XD_MOD M/MOD
+                / UNSIGNED 24/12 -> 12R 24Q
+                / >R 0 R U/ R> SWAP >R U/ R> ( L H D -- R L H )
+                /
+                / >R         L H             D
+                / 0          L H 0           D
+                / R          L H 0 D         D
+                / U/         L R1 Q1         D
+                / R>         L R1 Q1 D
+                / SWAP       L R1 D Q1
+                / >R         L R1 D          Q1
+                / U/         R2 Q2           Q1
+                / R>         R2 Q2 Q1
+
+                TOR; ZERO; OPR; UDIV; RFROM; SWAP; TOR; UDIV; RFROM; EXIT
+
+                / =====================================
+
+_Immed _BEGIN BEGIN
+                QCOMP; HERE; ONE; EXIT
+
+_Immed _THEN THEN
+                QCOMP; TWO; QPAIRS; HERE; SWAP; PLING; EXIT
+
+_Immed _DO DO
+                COMPIL; _DO; HERE; THREE; EXIT
+
+_Immed _LOOP LOOP
+                THREE; QPAIRS; COMPIL; _LOOP; COMMA; EXIT
+
+_Immed _PLOOP +LOOP
+                THREE; QPAIRS; COMPIL; _PLOOP; COMMA; EXIT
+
+_Immed _UNTIL UNTIL
+                ONE; QPAIRS; COMPIL; QBRA; COMMA; EXIT
+
+_Immed _AGAIN AGAIN
+                ONE; QPAIRS; COMPIL; BRA; COMMA; EXIT
+
+_Immed _REPT REPEAT
+                TOR; TOR; _AGAIN; RFROM; RFROM; TWO; SUB; _THEN; EXIT
+
+_Immed _IF IF
+                COMPIL; QBRA; HERE; ZERO; COMMA; TWO; EXIT
+
+
+_Immed _ELSE ELSE
+                TWO; QPAIRS; COMPIL; BRA; HERE; ZERO; COMMA
+                SWAP; TWO; _THEN; TWO; EXIT
+
+_Immed _WHILE WHILE
+                _IF; TWOPLUS; EXIT
+
+				/ *************COUNTING UP TO HERE.
+				/ HOLD ( CH --)
+__Colon HOLD HOLD
+                LIT; -1; THERE; PLUSPL; THERE; SPLING; EXIT
+                
+__Colon LTHASH <#
+                LIT; 32; THERE; LENPUT; EXIT
+
+				/ #> ( -- STR LEN)
+__Colon HASHGT #>
+                DROP; DROP; THERE; LIT; 32; OVER; SLEN; SUB; EXIT
+
+__Colon SIGN SIGN
+                ROT; LT0; QBRA; SIGN1; LIT; "-; HOLD
+SIGN1,
+         		EXIT
+
+__Colon HASH #
+                US_BAS; FETCH; XD_MOD; ROT
+                LIT; 9; OVER; OPLT; QBRA; HASH1; LIT; 7; PLUS
+HASH1,
+         		LIT; "0; PLUS; HOLD; EXIT
+
+__Colon HASHS #S
+HASHS0,
+        		HASH; TDUP; BITOR; EQ0; QBRA; HASHS0; EXIT
+
+__Colon DDOTR D.R
+                TOR; SWAP; OVER; DABS; LTHASH; HASHS; SIGN; HASHGT
+                RFROM; SUB; SPACES; LIT; 32; OVER; SLEN; TYPER; EXIT
+
+__Colon DDOT D.
+                ZERO; DDOTR; SPACE; EXIT
+
+__Colon DOTR .R
+                TOR; S2D; RFROM; DDOTR; EXIT
+
+__Colon DOT .
+                S2D; DDOT; EXIT
+
+__Colon QRY ?
+                FETCH; DOT; EXIT
+
+__Colon VLST VLIST
+				LATEST
+VLST1,
+				DUPE; L2NFA; IDDOT
+				FETCH; QDUP; EQ0
+				QBRA; VLST1
+				EXIT
+
+__Colon FRGET FORGET
+				FIND; QDUP; QBRA; FRGET1
+				DUPE; US_DP; PLING
+				FETCH; US_CUR; PLING
+				EXIT
+FRGET1,
+				DROP
+				EXIT
+
+                / =====================================
+
+LASTLINK = LINK
+DICT = .
+                END
+
